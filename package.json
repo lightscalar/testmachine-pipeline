@@ -1,0 +1,25 @@
+{
+  "name": "testmachine-pipeline-automation",
+  "version": "1.0.0",
+  "description": "Daily prospect discovery and intelligence research automation",
+  "main": "src/main.js",
+  "scripts": {
+    "automation:discover": "node src/workflows/discovery.js",
+    "automation:research": "node src/workflows/research.js",
+    "automation:full": "node src/workflows/full-pipeline.js",
+    "start": "node src/main.js",
+    "test": "node src/test.js"
+  },
+  "dependencies": {
+    "pg": "^8.11.0",
+    "openai": "^4.28.4",
+    "axios": "^1.6.7",
+    "node-cron": "^3.0.3",
+    "cheerio": "^1.0.0-rc.12",
+    "winston": "^3.11.0",
+    "rss-parser": "^3.13.0",
+    "dotenv": "^16.4.5"
+  },
+  "author": "TestMachine",
+  "license": "MIT"
+}
