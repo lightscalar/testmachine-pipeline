@@ -1,0 +1,23 @@
+{
+  "name": "hubspot-testmachine-poc",
+  "version": "1.0.0",
+  "description": "HubSpot API proof of concept for TestMachine pipeline integration",
+  "main": "hubspot-poc.js",
+  "scripts": {
+    "start": "node hubspot-poc.js",
+    "test": "node hubspot-poc.js --dry-run"
+  },
+  "keywords": [
+    "hubspot",
+    "api",
+    "testmachine",
+    "pipeline",
+    "poc"
+  ],
+  "author": "TestMachine",
+  "license": "MIT",
+  "dependencies": {
+    "@hubspot/api-client": "^11.2.0",
+    "dotenv": "^16.4.5"
+  }
+}
