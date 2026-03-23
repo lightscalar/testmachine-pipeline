@@ -8,17 +8,26 @@
     "automation:research": "node src/workflows/research.js",
     "automation:full": "node src/workflows/full-pipeline.js",
     "start": "node src/main.js",
-    "test": "node src/test.js"
+    "test": "node src/test.js",
+    
+    "hubspot:full-scale": "node src/integrations/hubspot-full-scale.js",
+    "hubspot:full-sync": "node src/integrations/hubspot-engagement.js",
+    "hubspot:sync": "node src/integrations/hubspot-sync.js",
+    "hubspot:status": "node src/integrations/engagement-status.js",
+    "hubspot:setup-test-data": "node src/integrations/test-data-setup.js setup",
+    "hubspot:show-data": "node src/integrations/test-data-setup.js show"
   },
   "dependencies": {
-    "pg": "^8.11.0",
-    "openai": "^4.28.4",
+    "@hubspot/api-client": "^13.5.0",
     "axios": "^1.6.7",
-    "node-cron": "^3.0.3",
     "cheerio": "^1.0.0-rc.12",
-    "winston": "^3.11.0",
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3",
+    "openai": "^4.28.4",
+    "pg": "^8.11.0",
     "rss-parser": "^3.13.0",
-    "dotenv": "^16.4.5"
+    "sqlite3": "^6.0.1",
+    "winston": "^3.11.0"
   },
   "author": "TestMachine",
   "license": "MIT"
