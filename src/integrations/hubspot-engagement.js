@@ -11,7 +11,7 @@ class HubSpotEngagementIntelligence {
     this.accessToken = process.env.HUBSPOT_ACCESS_TOKEN;
     this.dbPath = path.join(__dirname, '../../pipeline.db');
     this.debug = process.env.DEBUG === 'true';
-    this.batchSize = 100; // Process in batches to handle rate limits
+    this.batchSize = 50; // Process in batches to handle rate limits
     
     if (!this.accessToken) {
       throw new Error('HUBSPOT_ACCESS_TOKEN environment variable is required');
@@ -321,7 +321,7 @@ class HubSpotEngagementIntelligence {
     try {
       // Get meetings
       const meetingsResponse = await this.client.crm.objects.meetings.basicApi.getPage(
-        100, undefined, ['hs_timestamp', 'hs_meeting_outcome'], 
+        this.batchSize, undefined, ['hs_timestamp', 'hs_meeting_outcome'], 
         [`companies:${objectId}`, `contacts:${objectId}`]
       );
       
@@ -339,7 +339,7 @@ class HubSpotEngagementIntelligence {
 
       // Get calls
       const callsResponse = await this.client.crm.objects.calls.basicApi.getPage(
-        100, undefined, ['hs_timestamp', 'hs_call_duration'],
+        this.batchSize, undefined, ['hs_timestamp', 'hs_call_duration'],
         [`companies:${objectId}`, `contacts:${objectId}`]
       );
       
@@ -352,7 +352,7 @@ class HubSpotEngagementIntelligence {
 
       // Get notes
       const notesResponse = await this.client.crm.objects.notes.basicApi.getPage(
-        100, undefined, ['hs_timestamp'],
+        this.batchSize, undefined, ['hs_timestamp'],
         [`companies:${objectId}`, `contacts:${objectId}`]
       );
       
@@ -362,7 +362,7 @@ class HubSpotEngagementIntelligence {
 
       // Get tasks
       const tasksResponse = await this.client.crm.objects.tasks.basicApi.getPage(
-        100, undefined, ['hs_timestamp', 'hs_task_status'],
+        this.batchSize, undefined, ['hs_timestamp', 'hs_task_status'],
         [`companies:${objectId}`, `contacts:${objectId}`]
       );
       
