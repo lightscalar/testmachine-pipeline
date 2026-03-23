@@ -372,6 +372,35 @@ class HubSpotEngagementIntelligence {
         ).length;
       }
 
+      // Get emails and email engagement
+      const emailsResponse = await this.client.crm.objects.emails.basicApi.getPage(
+        this.batchSize, undefined, [
+          'hs_timestamp', 'hs_email_direction', 'hs_email_status',
+          'hs_email_open_count', 'hs_email_click_count', 'hs_email_reply_count'
+        ],
+        [`companies:${objectId}`, `contacts:${objectId}`]
+      );
+      
+      if (emailsResponse.results) {
+        for (const email of emailsResponse.results) {
+          const props = email.properties;
+          
+          // Count email opens
+          const openCount = parseInt(props.hs_email_open_count) || 0;
+          engagement.email_opens += openCount;
+          
+          // Count email clicks  
+          const clickCount = parseInt(props.hs_email_click_count) || 0;
+          engagement.email_clicks += clickCount;
+          
+          // Count email responses (replies we received)
+          if (props.hs_email_direction === 'INCOMING' || 
+              (props.hs_email_reply_count && parseInt(props.hs_email_reply_count) > 0)) {
+            engagement.email_responses += 1;
+          }
+        }
+      }
+
     } catch (error) {
       // Some engagement types might not be available - that's okay
       if (!error.message.includes('not found') && !error.message.includes('forbidden')) {
