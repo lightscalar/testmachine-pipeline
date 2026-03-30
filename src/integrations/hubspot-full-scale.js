@@ -366,7 +366,8 @@ class HubSpotFullScaleIntegration {
       { type: 'meetings', property: 'meeting_count_total', recentProperty: 'recent_meetings' },
       { type: 'calls', property: 'call_duration_total' },
       { type: 'notes', property: 'note_count' },
-      { type: 'tasks', property: 'task_completions' }
+      { type: 'tasks', property: 'task_completions' },
+      { type: 'emails', property: 'email_engagement' }
     ];
 
     for (const engType of engagementTypes) {
@@ -428,6 +429,55 @@ class HubSpotFullScaleIntegration {
                 engagement.task_completions += response.results.filter(task => 
                   task.properties.hs_task_status === 'COMPLETED'
                 ).length;
+              }
+              break;
+              
+            case 'emails':
+              // Use Legacy Engagements API for email data
+              try {
+                const emailResponse = await fetch(`https://api.hubapi.com/engagements/v1/engagements/paged?objectType=COMPANY&objectId=${objectId}&limit=100`, {
+                  headers: {
+                    'Authorization': `Bearer ${this.accessToken}`,
+                    'Content-Type': 'application/json'
+                  }
+                });
+                
+                if (emailResponse.ok) {
+                  const emailData = await emailResponse.json();
+                  
+                  if (emailData.results) {
+                    emailData.results.forEach(engagementItem => {
+                      const engagementDetails = engagementItem.engagement;
+                      if (engagementDetails && engagementDetails.type === 'EMAIL') {
+                        // Count email opens, clicks, responses
+                        const metadata = engagementItem.metadata || {};
+                        
+                        // Email opens - look for open events in metadata
+                        if (metadata.opened) {
+                          engagement.email_opens += 1;
+                        }
+                        
+                        // Email clicks - look for clicked events  
+                        if (metadata.clicked) {
+                          engagement.email_clicks += 1;
+                        }
+                        
+                        // Email responses - check if there's a response/reply
+                        if (metadata.replied || metadata.responded) {
+                          engagement.email_responses += 1;
+                        }
+                        
+                        // Fallback: count all email engagements as at least opens
+                        if (!metadata.opened && !metadata.clicked && !metadata.replied) {
+                          engagement.email_opens += 1; // Assume email was at least sent/delivered
+                        }
+                      }
+                    });
+                  }
+                }
+              } catch (emailError) {
+                // Email engagement API might fail - continue with other types
+                this.log(`⚠️ Email engagement fetch failed for ${objectId}: ${emailError.message}`);
               }
               break;
           }
