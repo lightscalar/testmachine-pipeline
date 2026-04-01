@@ -9,19 +9,21 @@
     "automation:full": "node src/workflows/full-pipeline.js",
     "start": "node src/main.js",
     "test": "node src/test.js",
-    
     "hubspot:full-scale": "node src/integrations/hubspot-full-scale.js",
     "hubspot:full-sync": "node src/integrations/hubspot-engagement.js",
     "hubspot:sync": "node src/integrations/hubspot-sync.js",
     "hubspot:status": "node src/integrations/engagement-status.js",
     "hubspot:setup-test-data": "node src/integrations/test-data-setup.js setup",
-    "hubspot:show-data": "node src/integrations/test-data-setup.js show"
+    "hubspot:show-data": "node src/integrations/test-data-setup.js show",
+    "web": "node src/web/server.js",
+    "web:dev": "node --watch src/web/server.js"
   },
   "dependencies": {
     "@hubspot/api-client": "^13.5.0",
     "axios": "^1.6.7",
     "cheerio": "^1.0.0-rc.12",
     "dotenv": "^16.4.5",
+    "express": "^5.2.1",
     "node-cron": "^3.0.3",
     "openai": "^4.28.4",
     "pg": "^8.11.0",

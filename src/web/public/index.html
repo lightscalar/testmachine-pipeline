@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TestMachine Pipeline</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #232733;
+    --border: #2d3140;
+    --text: #e4e6ed;
+    --text-dim: #8b8fa3;
+    --accent: #6c8cff;
+    --accent-dim: #4a5fa0;
+    --green: #34d399;
+    --yellow: #fbbf24;
+    --orange: #f97316;
+    --red: #ef4444;
+    --radius: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.5; font-size: 14px;
+  }
+
+  /* ─── Header ─── */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 24px; border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .header h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
+  .header h1 span { color: var(--accent); }
+  .header-stats { display: flex; gap: 16px; font-size: 12px; color: var(--text-dim); }
+  .header-stats .stat-val { color: var(--text); font-weight: 600; }
+
+  /* ─── Controls ─── */
+  .controls {
+    display: flex; gap: 10px; padding: 12px 24px;
+    border-bottom: 1px solid var(--border); flex-wrap: wrap; align-items: center;
+  }
+  .controls input, .controls select {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); padding: 7px 12px; border-radius: var(--radius);
+    font-size: 13px; outline: none;
+  }
+  .controls input:focus, .controls select:focus { border-color: var(--accent); }
+  .controls input { width: 260px; }
+  .controls select { cursor: pointer; }
+  .result-count { margin-left: auto; color: var(--text-dim); font-size: 12px; }
+
+  /* ─── Layout ─── */
+  .layout { display: flex; height: calc(100vh - 110px); }
+  .entity-list { flex: 1; overflow-y: auto; padding: 12px; }
+  .detail-panel {
+    width: 480px; border-left: 1px solid var(--border);
+    background: var(--surface); overflow-y: auto;
+    display: none; flex-direction: column;
+  }
+  .detail-panel.open { display: flex; }
+
+  /* ─── Entity Cards ─── */
+  .entity-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px;
+    cursor: pointer; transition: border-color 0.15s;
+  }
+  .entity-card:hover { border-color: var(--accent-dim); }
+  .entity-card.selected { border-color: var(--accent); background: var(--surface2); }
+
+  .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+  .card-name { font-weight: 600; font-size: 15px; }
+  .card-segment {
+    font-size: 11px; padding: 2px 8px; border-radius: 10px;
+    background: var(--surface2); color: var(--text-dim); white-space: nowrap;
+  }
+  .card-meta { display: flex; gap: 12px; font-size: 12px; color: var(--text-dim); flex-wrap: wrap; }
+  .card-meta span { display: flex; align-items: center; gap: 3px; }
+
+  .engagement-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px;
+  }
+  .engagement-badge.high { background: rgba(52,211,153,0.15); color: var(--green); }
+  .engagement-badge.medium { background: rgba(251,191,36,0.15); color: var(--yellow); }
+  .engagement-badge.low { background: rgba(249,115,22,0.15); color: var(--orange); }
+  .engagement-badge.none { background: rgba(139,143,163,0.1); color: var(--text-dim); }
+
+  .stage-badge {
+    font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500;
+  }
+  .stage-badge.prospecting { background: rgba(108,140,255,0.15); color: var(--accent); }
+  .stage-badge.qualified { background: rgba(251,191,36,0.15); color: var(--yellow); }
+  .stage-badge.closed { background: rgba(52,211,153,0.15); color: var(--green); }
+
+  /* ─── Detail Panel ─── */
+  .panel-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: var(--surface); z-index: 1;
+  }
+  .panel-header h2 { font-size: 16px; font-weight: 600; }
+  .panel-close {
+    background: none; border: none; color: var(--text-dim);
+    font-size: 20px; cursor: pointer; padding: 4px 8px; border-radius: 4px;
+  }
+  .panel-close:hover { background: var(--surface2); color: var(--text); }
+
+  .panel-tabs {
+    display: flex; border-bottom: 1px solid var(--border);
+  }
+  .panel-tab {
+    flex: 1; padding: 10px; text-align: center; font-size: 13px;
+    font-weight: 500; color: var(--text-dim); cursor: pointer;
+    border-bottom: 2px solid transparent; transition: all 0.15s;
+    background: none; border-top: none; border-left: none; border-right: none;
+  }
+  .panel-tab:hover { color: var(--text); }
+  .panel-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .panel-body { padding: 16px 20px; flex: 1; overflow-y: auto; }
+
+  /* ─── Inline Editable Fields ─── */
+  .field-group { margin-bottom: 14px; }
+  .field-label {
+    font-size: 11px; font-weight: 600; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;
+  }
+  .field-value {
+    padding: 6px 10px; border-radius: 6px; min-height: 32px;
+    border: 1px solid transparent; cursor: text; transition: all 0.15s;
+    word-break: break-word; white-space: pre-wrap;
+  }
+  .field-value:hover { background: var(--surface2); border-color: var(--border); }
+  .field-value:focus {
+    background: var(--surface2); border-color: var(--accent);
+    outline: none;
+  }
+  .field-value.saving { opacity: 0.6; }
+  .field-value.saved {
+    border-color: var(--green); animation: flash-green 0.8s ease-out;
+  }
+  .field-value.error { border-color: var(--red); }
+  .field-value:empty::before {
+    content: 'Click to edit...'; color: var(--text-dim); font-style: italic;
+  }
+
+  @keyframes flash-green {
+    0% { background: rgba(52,211,153,0.2); }
+    100% { background: transparent; }
+  }
+
+  /* ─── Readonly fields ─── */
+  .field-readonly {
+    padding: 6px 10px; color: var(--text-dim); font-size: 13px;
+  }
+
+  /* ─── Contact Notes Panel ─── */
+  .notes-form {
+    background: var(--surface2); border-radius: var(--radius);
+    padding: 14px; margin-bottom: 16px;
+  }
+  .notes-form label { display: block; font-size: 12px; font-weight: 600; color: var(--text-dim); margin-bottom: 4px; }
+  .notes-form input[type="date"] {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); padding: 8px 10px; border-radius: 6px; font-size: 13px;
+    margin-bottom: 10px;
+  }
+  .notes-form input[type="date"]:focus { border-color: var(--accent); outline: none; }
+  .notes-form textarea {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); padding: 8px 10px; border-radius: 6px; font-size: 13px;
+    resize: vertical; min-height: 80px; font-family: inherit;
+  }
+  .notes-form textarea:focus { border-color: var(--accent); outline: none; }
+  .notes-form-actions { display: flex; gap: 8px; margin-top: 10px; }
+
+  .btn {
+    padding: 7px 16px; border-radius: 6px; font-size: 13px;
+    font-weight: 500; cursor: pointer; border: none; transition: all 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #5a7ae6; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+  .btn-danger { background: transparent; color: var(--red); border: 1px solid transparent; }
+  .btn-danger:hover { background: rgba(239,68,68,0.1); }
+
+  .note-entry {
+    background: var(--surface2); border-radius: var(--radius);
+    padding: 12px 14px; margin-bottom: 8px;
+    border-left: 3px solid var(--accent-dim);
+  }
+  .note-entry:hover { border-left-color: var(--accent); }
+  .note-date { font-size: 12px; font-weight: 600; color: var(--accent); margin-bottom: 4px; }
+  .note-discussion { font-size: 13px; color: var(--text); white-space: pre-wrap; }
+  .note-actions {
+    display: flex; gap: 8px; margin-top: 8px; justify-content: flex-end;
+  }
+  .note-actions button { font-size: 11px; padding: 3px 10px; }
+  .note-empty { color: var(--text-dim); font-style: italic; text-align: center; padding: 24px; }
+
+  /* ─── Engagement info ─── */
+  .engagement-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .eng-metric {
+    background: var(--surface2); border-radius: 6px; padding: 10px;
+  }
+  .eng-metric-label { font-size: 11px; color: var(--text-dim); }
+  .eng-metric-val { font-size: 18px; font-weight: 700; }
+
+  /* ─── Scrollbar ─── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+  /* ─── Toast ─── */
+  .toast {
+    position: fixed; bottom: 20px; right: 20px; padding: 10px 18px;
+    border-radius: var(--radius); font-size: 13px; font-weight: 500;
+    z-index: 100; opacity: 0; transition: opacity 0.3s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  .toast.success { background: rgba(52,211,153,0.9); color: #000; }
+  .toast.error { background: rgba(239,68,68,0.9); color: #fff; }
+
+  .loading { text-align: center; padding: 40px; color: var(--text-dim); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1><span>TestMachine</span> Pipeline</h1>
+  <div class="header-stats" id="headerStats"></div>
+</div>
+
+<div class="controls">
+  <input type="text" id="searchInput" placeholder="Search companies, contacts, websites...">
+  <select id="segmentFilter">
+    <option value="">All Segments</option>
+    <option value="exchanges">Exchanges</option>
+    <option value="auditors">Auditors</option>
+    <option value="large_auditors">Large Auditors</option>
+    <option value="defi">DeFi Protocols</option>
+    <option value="rwa_tokenization">RWA/Tokenization</option>
+  </select>
+  <select id="stageFilter">
+    <option value="">All Stages</option>
+    <option value="Prospecting">Prospecting</option>
+    <option value="Qualified">Qualified</option>
+    <option value="Closed">Closed</option>
+  </select>
+  <select id="sortBy">
+    <option value="engagement">Sort: Engagement</option>
+    <option value="name">Sort: Name</option>
+  </select>
+  <span class="result-count" id="resultCount"></span>
+</div>
+
+<div class="layout">
+  <div class="entity-list" id="entityList">
+    <div class="loading">Loading pipeline data...</div>
+  </div>
+
+  <div class="detail-panel" id="detailPanel">
+    <div class="panel-header">
+      <h2 id="panelTitle">Company Details</h2>
+      <button class="panel-close" id="panelClose">&times;</button>
+    </div>
+    <div class="panel-tabs">
+      <button class="panel-tab active" data-tab="details">Details</button>
+      <button class="panel-tab" data-tab="notes">Contact Notes</button>
+      <button class="panel-tab" data-tab="engagement">Engagement</button>
+    </div>
+    <div class="panel-body" id="panelBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── State ──────────────────────────────────────────────────────────────────
+let entities = [];
+let selectedEntity = null;
+let currentTab = 'details';
+let contactNotes = [];
+let debounceTimer = null;
+
+// ─── Safe DOM helpers ───────────────────────────────────────────────────────
+function createEl(tag, attrs, children) {
+  const el = document.createElement(tag);
+  if (attrs) {
+    Object.entries(attrs).forEach(([k, v]) => {
+      if (k === 'className') el.className = v;
+      else if (k === 'textContent') el.textContent = v;
+      else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
+      else if (k.startsWith('data-')) el.setAttribute(k, v);
+      else el.setAttribute(k, v);
+    });
+  }
+  if (children) {
+    if (typeof children === 'string') el.textContent = children;
+    else if (Array.isArray(children)) children.forEach(c => { if (c) el.appendChild(c); });
+    else el.appendChild(children);
+  }
+  return el;
+}
+
+function clearEl(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+
+// ─── Init ───────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  loadEntities();
+  loadStats();
+
+  document.getElementById('searchInput').addEventListener('input', function() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(loadEntities, 300);
+  });
+  document.getElementById('segmentFilter').addEventListener('change', loadEntities);
+  document.getElementById('stageFilter').addEventListener('change', loadEntities);
+  document.getElementById('sortBy').addEventListener('change', loadEntities);
+  document.getElementById('panelClose').addEventListener('click', closePanel);
+
+  // Tab delegation
+  document.querySelector('.panel-tabs').addEventListener('click', function(e) {
+    var tab = e.target.closest('.panel-tab');
+    if (!tab) return;
+    currentTab = tab.getAttribute('data-tab');
+    document.querySelectorAll('.panel-tab').forEach(function(t) { t.classList.remove('active'); });
+    tab.classList.add('active');
+    renderTab();
+  });
+});
+
+// ─── Data Loading ───────────────────────────────────────────────────────────
+async function loadEntities() {
+  var search = document.getElementById('searchInput').value;
+  var segment = document.getElementById('segmentFilter').value;
+  var stage = document.getElementById('stageFilter').value;
+  var sort = document.getElementById('sortBy').value;
+
+  var params = new URLSearchParams();
+  if (search) params.set('search', search);
+  if (segment) params.set('segment', segment);
+  if (stage) params.set('stage', stage);
+  if (sort) params.set('sort', sort);
+
+  try {
+    var res = await fetch('/api/entities?' + params);
+    var data = await res.json();
+    entities = data.entities;
+    document.getElementById('resultCount').textContent = data.total + ' companies';
+    renderEntityList();
+  } catch (err) {
+    showToast('Failed to load data', 'error');
+  }
+}
+
+async function loadStats() {
+  try {
+    var res = await fetch('/api/stats');
+    var stats = await res.json();
+    var totalEntities = 0, totalEngaged = 0;
+    Object.values(stats).forEach(function(s) { totalEntities += s.total; totalEngaged += s.engaged; });
+    var el = document.getElementById('headerStats');
+    clearEl(el);
+    var items = [
+      ['Total', totalEntities],
+      ['Engaged', totalEngaged],
+      ['Segments', Object.keys(stats).length]
+    ];
+    items.forEach(function(item) {
+      var span = createEl('span');
+      span.appendChild(document.createTextNode(item[0] + ': '));
+      span.appendChild(createEl('span', { className: 'stat-val' }, String(item[1])));
+      el.appendChild(span);
+    });
+  } catch (err) { /* silent */ }
+}
+
+async function loadContactNotes(table, id) {
+  try {
+    var res = await fetch('/api/contact-notes/' + encodeURIComponent(table) + '/' + encodeURIComponent(id));
+    var data = await res.json();
+    contactNotes = data.notes;
+  } catch (err) {
+    contactNotes = [];
+  }
+}
+
+// ─── Rendering ──────────────────────────────────────────────────────────────
+function renderEntityList() {
+  var container = document.getElementById('entityList');
+  clearEl(container);
+
+  if (entities.length === 0) {
+    container.appendChild(createEl('div', { className: 'loading' }, 'No companies found'));
+    return;
+  }
+
+  entities.forEach(function(e) {
+    var card = createEl('div', {
+      className: 'entity-card' + (selectedEntity && selectedEntity.id === e.id && selectedEntity._table === e._table ? ' selected' : '')
+    });
+    card.addEventListener('click', function() { selectEntity(e._table, e.id); });
+
+    // Header row
+    var header = createEl('div', { className: 'card-header' }, [
+      createEl('span', { className: 'card-name' }, e.n || ''),
+      createEl('span', { className: 'card-segment' }, e._segment || '')
+    ]);
+    card.appendChild(header);
+
+    // Meta row
+    var meta = createEl('div', { className: 'card-meta' });
+    if (e.s) {
+      meta.appendChild(createEl('span', { className: 'stage-badge ' + (e.s || '').toLowerCase() }, e.s));
+    }
+    if (e.engagement_level) {
+      meta.appendChild(createEl('span', {
+        className: 'engagement-badge ' + (e.engagement_level || '').toLowerCase()
+      }, (e.engagement_score || 0) + '/10 ' + (e.engagement_level || '')));
+    }
+    if (e.o) meta.appendChild(createEl('span', {}, 'Owner: ' + e.o));
+    if (e.c) meta.appendChild(createEl('span', {}, 'Contact: ' + e.c));
+    card.appendChild(meta);
+
+    container.appendChild(card);
+  });
+}
+
+async function selectEntity(table, id) {
+  try {
+    var res = await fetch('/api/entities/' + encodeURIComponent(table) + '/' + encodeURIComponent(id));
+    selectedEntity = await res.json();
+    selectedEntity._table = table;
+    var match = entities.find(function(e) { return e._table === table && e.id === id; });
+    selectedEntity._segment = (match || {})._segment || table;
+
+    await loadContactNotes(table, id);
+
+    document.getElementById('panelTitle').textContent = selectedEntity.n;
+    document.getElementById('detailPanel').classList.add('open');
+    renderTab();
+    renderEntityList();
+  } catch (err) {
+    showToast('Failed to load details', 'error');
+  }
+}
+
+function closePanel() {
+  document.getElementById('detailPanel').classList.remove('open');
+  selectedEntity = null;
+  renderEntityList();
+}
+
+function renderTab() {
+  var body = document.getElementById('panelBody');
+  clearEl(body);
+  if (currentTab === 'details') renderDetailsTab(body);
+  else if (currentTab === 'notes') renderNotesTab(body);
+  else if (currentTab === 'engagement') renderEngagementTab(body);
+}
+
+// ─── Details Tab (Inline Editing) ───────────────────────────────────────────
+function renderDetailsTab(container) {
+  var e = selectedEntity;
+  var editableFields = [
+    { key: 'n', label: 'Company Name' },
+    { key: 'w', label: 'Website' },
+    { key: 's', label: 'Stage' },
+    { key: 'c', label: 'Connection' },
+    { key: 'r', label: 'Role' },
+    { key: 'o', label: 'Owner' },
+    { key: 't', label: 'Timing' },
+    { key: 'prov', label: 'Provider' },
+    { key: 'l', label: 'Listings' },
+    { key: 'lc', label: 'Lead Context' },
+    { key: 'bo', label: 'Background / Org' },
+    { key: 'sp', label: 'Security Posture' },
+    { key: 'sb', label: 'Security Budget' }
+  ];
+
+  // Segment badge + HubSpot status
+  var topRow = createEl('div', { style: 'margin-bottom: 12px;' });
+  topRow.appendChild(createEl('span', { className: 'card-segment' }, e._segment));
+  if (e.hubspot_company_id) {
+    var hsTag = createEl('span', { style: 'margin-left: 8px; font-size: 11px; color: var(--green);' }, 'HubSpot linked');
+    topRow.appendChild(hsTag);
+  }
+  container.appendChild(topRow);
+
+  editableFields.forEach(function(f) {
+    var group = createEl('div', { className: 'field-group' });
+    group.appendChild(createEl('div', { className: 'field-label' }, f.label));
+
+    var val = createEl('div', {
+      className: 'field-value',
+      contenteditable: 'true',
+      'data-field': f.key,
+      'data-original': e[f.key] || ''
+    });
+    val.textContent = e[f.key] || '';
+    val.addEventListener('blur', function() { handleFieldBlur(val); });
+    val.addEventListener('keydown', function(ev) { handleFieldKeydown(ev, val); });
+
+    group.appendChild(val);
+    container.appendChild(group);
+  });
+}
+
+async function handleFieldBlur(el) {
+  var field = el.getAttribute('data-field');
+  var original = el.getAttribute('data-original');
+  var newValue = el.textContent.trim();
+
+  if (newValue === original) return;
+
+  el.classList.add('saving');
+  try {
+    var res = await fetch('/api/entities/' + encodeURIComponent(selectedEntity._table) + '/' + encodeURIComponent(selectedEntity.id), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ field: field, value: newValue })
+    });
+    if (!res.ok) throw new Error('Save failed');
+
+    el.setAttribute('data-original', newValue);
+    selectedEntity[field] = newValue;
+    el.classList.remove('saving');
+    el.classList.add('saved');
+    setTimeout(function() { el.classList.remove('saved'); }, 800);
+
+    if (field === 'n') {
+      document.getElementById('panelTitle').textContent = newValue;
+    }
+    loadEntities();
+  } catch (err) {
+    el.classList.remove('saving');
+    el.classList.add('error');
+    setTimeout(function() { el.classList.remove('error'); }, 1500);
+    showToast('Failed to save', 'error');
+  }
+}
+
+function handleFieldKeydown(e, el) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); el.blur(); }
+  if (e.key === 'Escape') { el.textContent = el.getAttribute('data-original'); el.blur(); }
+}
+
+// ─── Contact Notes Tab ──────────────────────────────────────────────────────
+function renderNotesTab(container) {
+  var today = new Date().toISOString().split('T')[0];
+
+  // New note form
+  var form = createEl('div', { className: 'notes-form' });
+
+  form.appendChild(createEl('label', {}, 'Date of Contact'));
+  var dateInput = createEl('input', { type: 'date', id: 'noteDate', value: today });
+  form.appendChild(dateInput);
+
+  form.appendChild(createEl('label', {}, 'Discussion Notes'));
+  var textarea = createEl('textarea', {
+    id: 'noteDiscussion',
+    placeholder: 'What was discussed? Key takeaways, next steps, action items...'
+  });
+  form.appendChild(textarea);
+
+  var actions = createEl('div', { className: 'notes-form-actions' });
+  var saveBtn = createEl('button', { className: 'btn btn-primary' }, 'Save Note');
+  saveBtn.addEventListener('click', saveNote);
+  actions.appendChild(saveBtn);
+  form.appendChild(actions);
+
+  container.appendChild(form);
+
+  // Notes list
+  var notesList = createEl('div', { id: 'notesList' });
+  if (contactNotes.length === 0) {
+    notesList.appendChild(createEl('div', { className: 'note-empty' }, 'No contact notes yet. Add your first note above.'));
+  } else {
+    contactNotes.forEach(function(note) {
+      notesList.appendChild(buildNoteEntry(note));
+    });
+  }
+  container.appendChild(notesList);
+}
+
+function buildNoteEntry(note) {
+  var d = new Date(note.contact_date + 'T00:00:00');
+  var dateStr = d.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+
+  var entry = createEl('div', { className: 'note-entry', 'data-note-id': String(note.id) });
+  entry.appendChild(createEl('div', { className: 'note-date' }, dateStr));
+  entry.appendChild(createEl('div', { className: 'note-discussion' }, note.discussion));
+
+  var actions = createEl('div', { className: 'note-actions' });
+  var editBtn = createEl('button', { className: 'btn btn-ghost' }, 'Edit');
+  editBtn.addEventListener('click', function() { editNote(note.id); });
+  var delBtn = createEl('button', { className: 'btn btn-danger' }, 'Delete');
+  delBtn.addEventListener('click', function() { deleteNote(note.id); });
+  actions.appendChild(editBtn);
+  actions.appendChild(delBtn);
+  entry.appendChild(actions);
+
+  return entry;
+}
+
+async function saveNote() {
+  var dateInput = document.getElementById('noteDate');
+  var discInput = document.getElementById('noteDiscussion');
+  var date = dateInput.value;
+  var disc = discInput.value.trim();
+
+  if (!date || !disc) {
+    showToast('Please fill in both date and discussion', 'error');
+    return;
+  }
+
+  try {
+    var res = await fetch('/api/contact-notes/' + encodeURIComponent(selectedEntity._table) + '/' + encodeURIComponent(selectedEntity.id), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contact_date: date, discussion: disc })
+    });
+    if (!res.ok) throw new Error('Save failed');
+
+    await loadContactNotes(selectedEntity._table, selectedEntity.id);
+    var body = document.getElementById('panelBody');
+    clearEl(body);
+    renderNotesTab(body);
+    showToast('Note saved', 'success');
+  } catch (err) {
+    showToast('Failed to save note', 'error');
+  }
+}
+
+function editNote(noteId) {
+  var note = contactNotes.find(function(n) { return n.id === noteId; });
+  if (!note) return;
+
+  var entry = document.querySelector('[data-note-id="' + noteId + '"]');
+  clearEl(entry);
+
+  entry.appendChild(createEl('label', { className: 'field-label' }, 'Date'));
+  var dateInput = createEl('input', {
+    type: 'date', id: 'editDate_' + noteId,
+    value: note.contact_date.split('T')[0],
+    style: 'width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;margin-bottom:8px;'
+  });
+  entry.appendChild(dateInput);
+
+  entry.appendChild(createEl('label', { className: 'field-label' }, 'Discussion'));
+  var discArea = createEl('textarea', {
+    id: 'editDisc_' + noteId,
+    style: 'width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;min-height:60px;font-family:inherit;'
+  });
+  discArea.textContent = note.discussion;
+  entry.appendChild(discArea);
+
+  var actions = createEl('div', { className: 'note-actions', style: 'margin-top:8px;' });
+  var saveBtn = createEl('button', { className: 'btn btn-primary' }, 'Save');
+  saveBtn.addEventListener('click', function() { saveEditNote(noteId); });
+  var cancelBtn = createEl('button', { className: 'btn btn-ghost' }, 'Cancel');
+  cancelBtn.addEventListener('click', function() {
+    var body = document.getElementById('panelBody');
+    clearEl(body);
+    renderNotesTab(body);
+  });
+  actions.appendChild(saveBtn);
+  actions.appendChild(cancelBtn);
+  entry.appendChild(actions);
+}
+
+async function saveEditNote(noteId) {
+  var date = document.getElementById('editDate_' + noteId).value;
+  var disc = document.getElementById('editDisc_' + noteId).value.trim();
+
+  if (!date || !disc) { showToast('Please fill in both fields', 'error'); return; }
+
+  try {
+    var res = await fetch('/api/contact-notes/' + encodeURIComponent(noteId), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contact_date: date, discussion: disc })
+    });
+    if (!res.ok) throw new Error('Update failed');
+
+    await loadContactNotes(selectedEntity._table, selectedEntity.id);
+    var body = document.getElementById('panelBody');
+    clearEl(body);
+    renderNotesTab(body);
+    showToast('Note updated', 'success');
+  } catch (err) {
+    showToast('Failed to update note', 'error');
+  }
+}
+
+async function deleteNote(noteId) {
+  if (!confirm('Delete this contact note?')) return;
+  try {
+    var res = await fetch('/api/contact-notes/' + encodeURIComponent(noteId), { method: 'DELETE' });
+    if (!res.ok) throw new Error('Delete failed');
+
+    await loadContactNotes(selectedEntity._table, selectedEntity.id);
+    var body = document.getElementById('panelBody');
+    clearEl(body);
+    renderNotesTab(body);
+    showToast('Note deleted', 'success');
+  } catch (err) {
+    showToast('Failed to delete note', 'error');
+  }
+}
+
+// ─── Engagement Tab ─────────────────────────────────────────────────────────
+function renderEngagementTab(container) {
+  var e = selectedEntity;
+
+  // Score display
+  var scoreBox = createEl('div', { style: 'text-align:center; margin-bottom:16px;' });
+  var scoreNum = createEl('div', { style: 'font-size:48px; font-weight:800; color:' + engColor(e.engagement_level) + ';' }, String(e.engagement_score || 0));
+  scoreBox.appendChild(scoreNum);
+  scoreBox.appendChild(createEl('div', { style: 'font-size:13px; color:var(--text-dim);' }, 'Engagement Score / 10'));
+  var badge = createEl('span', {
+    className: 'engagement-badge ' + (e.engagement_level || 'none').toLowerCase(),
+    style: 'margin-top:6px; display:inline-flex;'
+  }, e.engagement_level || 'None');
+  scoreBox.appendChild(badge);
+  container.appendChild(scoreBox);
+
+  // Metrics grid
+  var grid = createEl('div', { className: 'engagement-grid' });
+  var metrics = [
+    ['Meetings (recent)', e.recent_meetings],
+    ['Meetings (total)', e.meeting_count_total],
+    ['Email Responses', e.email_responses],
+    ['Email Opens', e.email_opens],
+    ['Email Clicks', e.email_clicks],
+    ['Call Minutes', e.call_duration_total],
+    ['Notes', e.note_count],
+    ['Tasks Done', e.task_completions]
+  ];
+  metrics.forEach(function(m) {
+    var metric = createEl('div', { className: 'eng-metric' });
+    metric.appendChild(createEl('div', { className: 'eng-metric-label' }, m[0]));
+    metric.appendChild(createEl('div', { className: 'eng-metric-val' }, String(m[1] || 0)));
+    grid.appendChild(metric);
+  });
+  container.appendChild(grid);
+
+  // Extra info
+  var extra = createEl('div', { style: 'margin-top:16px;' });
+
+  var confGroup = createEl('div', { className: 'field-group' });
+  confGroup.appendChild(createEl('div', { className: 'field-label' }, 'Confidence'));
+  var confVal = e.confidence_score ? (e.confidence_score * 100).toFixed(0) + '% - ' + (e.matching_method || 'Unknown') : 'N/A';
+  confGroup.appendChild(createEl('div', { className: 'field-readonly' }, confVal));
+  extra.appendChild(confGroup);
+
+  var syncGroup = createEl('div', { className: 'field-group' });
+  syncGroup.appendChild(createEl('div', { className: 'field-label' }, 'Last HubSpot Sync'));
+  syncGroup.appendChild(createEl('div', { className: 'field-readonly' }, e.last_hubspot_sync ? new Date(e.last_hubspot_sync).toLocaleString() : 'Never'));
+  extra.appendChild(syncGroup);
+
+  var actGroup = createEl('div', { className: 'field-group' });
+  actGroup.appendChild(createEl('div', { className: 'field-label' }, 'Days Since Activity'));
+  actGroup.appendChild(createEl('div', { className: 'field-readonly' }, e.days_since_last_activity != null ? String(e.days_since_last_activity) : 'Unknown'));
+  extra.appendChild(actGroup);
+
+  container.appendChild(extra);
+}
+
+function engColor(level) {
+  var colors = { High: 'var(--green)', Medium: 'var(--yellow)', Low: 'var(--orange)', None: 'var(--text-dim)' };
+  return colors[level] || 'var(--text-dim)';
+}
+
+// ─── Toast ──────────────────────────────────────────────────────────────────
+function showToast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(function() { t.classList.remove('show'); }, 2500);
+}
+</script>
+</body>
+</html>
