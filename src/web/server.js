@@ -6,7 +6,7 @@ const { pool } = require('../database/connection');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.WEB_PORT || 3001;
+const PORT = process.env.WEB_PORT || 3847;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
